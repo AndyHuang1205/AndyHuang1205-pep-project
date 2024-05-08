@@ -1,9 +1,5 @@
 package Controller;
 import Model.Message;
-// import org.eclipse.jetty.http.HttpTester.Message;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import Model.Account;
 import Service.AccountService;
@@ -29,6 +25,7 @@ public class SocialMediaController {
         this.messageService = new MessageService();
 
     }
+    
     public Javalin startAPI() {
         Javalin app = Javalin.create();
         app.post("/register", this::register);
@@ -47,20 +44,16 @@ public class SocialMediaController {
         ctx.json(messageService.getMessagesByUser(id));
         
     }
+
     private void updateMessage(Context ctx){
-        try{
-            ObjectMapper om = new ObjectMapper();
-            String messageText = om.readValue(ctx.body(), Message.class).getMessage_text();
-            int id = Integer.parseInt(ctx.pathParam("message_id"));
-            if(messageService.getMessageByID(id) != null && messageText.length()<256 && !messageText.isEmpty())
-            {
-                messageService.updateMessageByID(id, messageText);
-                ctx.json(messageService.getMessageByID(id));
-            }
-            else ctx.status(400);
-        }catch(JsonProcessingException j){
-            j.printStackTrace();
+        String messageText = ctx.bodyAsClass(Message.class).getMessage_text();
+        int id = Integer.parseInt(ctx.pathParam("message_id"));
+        if(messageService.getMessageByID(id) != null && messageText.length()<256 && !messageText.isEmpty())
+        {
+            messageService.updateMessageByID(id, messageText);
+            ctx.json(messageService.getMessageByID(id));
         }
+        else ctx.status(400);
     }
 
     private void deleteMessageByID(Context ctx){
@@ -68,9 +61,7 @@ public class SocialMediaController {
         int id = Integer.parseInt(ctx.pathParam("message_id"));
         Message message = messageService.getMessageByID(id);
         if(messageService.deleteMessageByID(id)) ctx.json(message);
-        else{
-            ctx.status(200);
-        }
+        ctx.status(200);
     }
    
     private void getMessage(Context ctx){
@@ -83,28 +74,21 @@ public class SocialMediaController {
     }
 
     private void createMessage(Context ctx){
-        try{
-            ObjectMapper om = new ObjectMapper();
-            Message message = om.readValue(ctx.body(), Message.class);
-            if (message.getMessage_text().length() < 256 && messageService.messagePostedByExist(message.getPosted_by()) && !message.getMessage_text().isBlank()){
-                messageService.createMessage(message);
-                int id = messageService.getIDByMessage(message.getMessage_text());
-                message.setMessage_id(id);
-                ctx.json(message);
-            }else ctx.status(400);
-            
-        }catch(JsonProcessingException j){
-            j.printStackTrace();
-        }
+        Message message = ctx.bodyAsClass(Message.class);
+        
+        if (message.getMessage_text().length() < 256 && messageService.messagePostedByExist(message.getPosted_by()) && !message.getMessage_text().isBlank()){
+            messageService.createMessage(message);
+            int id = messageService.getIDByMessage(message.getMessage_text());
+            message.setMessage_id(id);
+            ctx.json(message);
+        }else ctx.status(400);
+
        
         
 
     }
     private void login(Context ctx){
-        try{
-            ObjectMapper om = new ObjectMapper();
-            String body = ctx.body();
-            Account account = om.readValue(body, Account.class);
+            Account account = ctx.bodyAsClass(Account.class);
             String username = account.getUsername();
             String password = account.getPassword();
             if(accountService.verifyAccount(username, password)){
@@ -112,28 +96,19 @@ public class SocialMediaController {
                 account.setAccount_id(ID);
                 ctx.json(account);
             }else ctx.status(401);
-        }catch(JsonProcessingException j){
-            j.printStackTrace();
-        }
         
 
     }
     private void register(Context context) {
-        try{
-            ObjectMapper om = new ObjectMapper();
-            Account account = om.readValue(context.body(),Account.class);
-            String password = account.getPassword();
-            if(accountService.getAccountByUsername(account.getUsername())==null && password.length()>3 && !account.getUsername().isEmpty()){ 
-                accountService.createAccount(account);
-                int id = accountService.getIDByUsername(account.getUsername());
-                account.setAccount_id(id);
-                context.json(account);
-            }else context.status(400);
-            
+        Account account = context.bodyAsClass(Account.class);
+        String password = account.getPassword();
+        if(accountService.getAccountByUsername(account.getUsername())==null && password.length()>3 && !account.getUsername().isEmpty()){ 
+            accountService.createAccount(account);
+            int id = accountService.getIDByUsername(account.getUsername());
+            account.setAccount_id(id);
+            context.json(account);
+        }else context.status(400);
 
-        }catch(JsonProcessingException j){
-            j.printStackTrace();
-        }
         
 
     }
